@@ -9,8 +9,21 @@ import { cloneVipiState, normalizeVipiState, readVipiState, writeVipiState, vipi
 
 test("all catalog entries are enabled by default and use portable sources", () => {
   assert.deepEqual([...getDesiredEnabledIds({ disabled: [] })], vipiExtensions.map(({ id }) => id));
-  assert.ok(vipiExtensions.every(({ source }) => source.startsWith("git:github.com/vimhead/")));
+  assert.ok(vipiExtensions.every(({ source }) => source.startsWith("git:github.com/vimhead/") || source.startsWith("npm:")));
   assert.ok(vipiExtensions.every((entry) => !("tier" in entry)));
+});
+
+test("pi-norn uses the npm adapter and recognizes an existing installation", () => {
+  const adapter = vipiExtensions.find(({ id }) => id === "norn");
+  assert.equal(adapter.name, "pi-norn");
+  assert.equal(adapter.source, "npm:@vimhead.dev/pi-norn@tip");
+  assert.ok(!vipiExtensions.some(({ source }) => source === "git:github.com/vimhead/norn"));
+  const configured = new Set(["npm:@vimhead.dev/pi-norn@tip"]);
+  const installed = getVipiExtensionStatuses({ disabled: [] }, configured);
+  assert.equal(installed.find(({ extension }) => extension.id === "norn").state, "installed");
+  const disabled = normalizeVipiState({ disabled: ["norn"] });
+  assert.deepEqual(disabled, { disabled: ["norn"] });
+  assert.equal(getVipiExtensionStatuses(disabled, configured).find(({ extension }) => extension.id === "norn").state, "pending-remove");
 });
 
 test("explicitly disabling pi-me also disables its dependents", () => {

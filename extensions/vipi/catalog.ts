@@ -28,9 +28,9 @@ export const vipiExtensions: readonly VipiExtension[] = [
 	},
 	{
 		id: "norn",
-		name: "norn",
-		description: "Deliver installed Norn runtime documentation to outer Pi agent sessions.",
-		source: "git:github.com/vimhead/norn",
+		name: "pi-norn",
+		description: "Connect Pi to the installed Norn workflow runtime.",
+		source: "npm:@vimhead.dev/pi-norn@tip",
 
 		tags: ["workflows", "agents", "authoring"],
 		homepage: "https://github.com/vimhead/norn#readme",
