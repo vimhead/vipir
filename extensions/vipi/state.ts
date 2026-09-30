@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { vipiExtensionIds, type VipiExtensionId, type VipiState } from "./types.ts";
+import { vipiExtensionIds, vipiEditorFeatures, type VipiEditorFeature, type VipiExtensionId, type VipiState } from "./types.ts";
 
 export const defaultVipiState: VipiState = { disabled: [] };
 
@@ -20,14 +20,24 @@ export function normalizeVipiState(value: unknown): VipiState {
 	const disabled = state.disabled ?? state.disabledPrimary;
 	const allowedIds = new Set<string>(vipiExtensionIds);
 	const ids = Array.isArray(disabled)
-		? disabled.map((id) => id === "pi-yappi-themes" ? "pi-vipi-themes" : id)
+		? disabled.map((id) => id === "pi-yappi-themes" ? "pi-vipi-themes" : id === "pi-me" ? "vipi-editor" : id)
 			.filter((id): id is VipiExtensionId => typeof id === "string" && allowedIds.has(id))
 		: [];
-	return { disabled: [...new Set(ids)].sort((left, right) => left.localeCompare(right)) };
+	const editorDisabledFeatures = vipiEditorFeatures.filter((feature) =>
+		(Array.isArray(disabled) && disabled.includes(`pi-me-${feature}`)) ||
+		(Array.isArray(state.editorDisabledFeatures) && state.editorDisabledFeatures.includes(feature)),
+	).sort() as VipiEditorFeature[];
+	return {
+		disabled: [...new Set(ids)].sort((left, right) => left.localeCompare(right)),
+		...(editorDisabledFeatures.length > 0 ? { editorDisabledFeatures } : {}),
+	};
 }
 
 export function cloneVipiState(state: VipiState): VipiState {
-	return { disabled: [...state.disabled] };
+	return {
+		disabled: [...state.disabled],
+		...(state.editorDisabledFeatures ? { editorDisabledFeatures: [...state.editorDisabledFeatures] } : {}),
+	};
 }
 
 export function vipiStatesEqual(left: VipiState, right: VipiState): boolean {

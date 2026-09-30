@@ -15,10 +15,10 @@ Start Pi, open **`/vipi`**, and press **S** to install the collection. Every pac
 - Move with the displayed selection keys; **Enter** or **Space** toggles a package.
 - **S** saves and syncs. **U** syncs and updates. **r** refreshes status.
 - **Esc** closes; unsaved changes can be applied or discarded.
-- Disabling pi-me disables its plugins. Enabling a plugin enables pi-me.
+- `/vipi-editor` controls individual editor features; disable the whole editor in `/vipi`.
 - Package changes reload Pi. Preferences are saved in `~/.pi/agent/vipi.json`.
 
-Includes [pi-me](https://github.com/vimhead/pi-me), [jump mode](https://github.com/vimhead/pi-me-jump-mode), [command palette](https://github.com/vimhead/pi-me-command-palette), [input-source switching](https://github.com/vimhead/pi-me-input-source), [background jobs](https://github.com/vimhead/pi-background-jobs), [web access](https://github.com/vimhead/pi-web-access), [themes](https://github.com/vimhead/pi-vipi-themes), and [pi-norn](https://www.npmjs.com/package/@vimhead.dev/pi-norn).
+Includes [vipi-editor](https://github.com/vimhead/vipi-editor) for coordinated Vim editing, jump mode, command palette, and input-source switching, [background jobs](https://github.com/vimhead/pi-background-jobs), [web access](https://github.com/vimhead/pi-web-access), [themes](https://github.com/vimhead/pi-vipi-themes), and [pi-norn](https://www.npmjs.com/package/@vimhead.dev/pi-norn).
 
 Use current Pi and Node.js 24+. Input-source switching needs macOS and `macism`; Norn needs its CLI installed separately.
 

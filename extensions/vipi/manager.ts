@@ -7,6 +7,7 @@ import {
 	type PackageManager,
 } from "@earendil-works/pi-coding-agent";
 import { vipiExtensions } from "./catalog.ts";
+import { editorPackageSource, removeRetiredEditorSources } from "./editor-migration.ts";
 import { writeVipiState } from "./state.ts";
 import type {
 	VipiExtension,
@@ -195,6 +196,13 @@ export async function syncVipiExtensions(
 		}
 	}
 
+	const migration = removeRetiredEditorSources({
+		packageManager,
+		canReplaceEditor: !desiredIds.has("vipi-editor") || configured.has(editorPackageSource),
+		onProgress,
+	});
+	result.removed.push(...migration.removed);
+	result.errors.push(...migration.errors);
 	result.skipped.push(...vipiExtensions.filter((extension) => skipped.has(extension.id)));
 
 	onProgress?.("Saving Pi settings...");

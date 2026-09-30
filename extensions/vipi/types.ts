@@ -6,10 +6,7 @@ export const vipiExtensionIds = [
 	"pi-web-access",
 	"pi-vipi-themes",
 	"norn",
-	"pi-me",
-	"pi-me-jump-mode",
-	"pi-me-command-palette",
-	"pi-me-input-source",
+	"vipi-editor",
 ] as const;
 export type VipiExtensionId = typeof vipiExtensionIds[number];
 
@@ -38,8 +35,12 @@ export interface VipiExtension {
 	platformSupport?: Partial<Record<VipiPlatform, VipiPlatformSupport>>;
 }
 
+export const vipiEditorFeatures = ["jump-mode", "command-palette", "input-source"] as const;
+export type VipiEditorFeature = typeof vipiEditorFeatures[number];
+
 export interface VipiState {
 	disabled: VipiExtensionId[];
+	editorDisabledFeatures?: VipiEditorFeature[];
 }
 
 export interface VipiExtensionStatus {
@@ -64,7 +65,7 @@ export interface VipiOperationError {
 
 export interface VipiSyncResult {
 	installed: VipiExtension[];
-	removed: VipiExtension[];
+	removed: VipiOperationTarget[];
 	skipped: VipiExtension[];
 	errors: VipiOperationError[];
 }
