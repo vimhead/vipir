@@ -7,6 +7,9 @@ export const vipiExtensionIds = [
 	"pi-vipi-themes",
 	"norn",
 	"vipi-editor",
+	"pi-me-jump-mode",
+	"pi-me-command-palette",
+	"pi-me-input-source",
 ] as const;
 export type VipiExtensionId = typeof vipiExtensionIds[number];
 
@@ -36,11 +39,10 @@ export interface VipiExtension {
 }
 
 export const vipiEditorFeatures = ["jump-mode", "command-palette", "input-source"] as const;
-export type VipiEditorFeature = typeof vipiEditorFeatures[number];
 
 export interface VipiState {
 	disabled: VipiExtensionId[];
-	editorDisabledFeatures?: VipiEditorFeature[];
+	editorPluginsMigrated?: true;
 }
 
 export interface VipiExtensionStatus {

@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { vipiExtensionIds, vipiEditorFeatures, type VipiEditorFeature, type VipiExtensionId, type VipiState } from "./types.ts";
+import { vipiExtensionIds, vipiEditorFeatures, type VipiExtensionId, type VipiState } from "./types.ts";
 
 export const defaultVipiState: VipiState = { disabled: [] };
 
@@ -19,24 +19,23 @@ export function normalizeVipiState(value: unknown): VipiState {
 	const state = value && typeof value === "object" ? value as Record<string, unknown> : {};
 	const disabled = state.disabled ?? state.disabledPrimary;
 	const allowedIds = new Set<string>(vipiExtensionIds);
-	const ids = Array.isArray(disabled)
-		? disabled.map((id) => id === "pi-yappi-themes" ? "pi-vipi-themes" : id === "pi-me" ? "vipi-editor" : id)
-			.filter((id): id is VipiExtensionId => typeof id === "string" && allowedIds.has(id))
+	const savedFeatures = state.editorDisabledFeatures;
+	const legacyFeatures = Array.isArray(savedFeatures)
+		? vipiEditorFeatures.filter((feature) => savedFeatures.includes(feature)).map((feature) => `pi-me-${feature}`)
 		: [];
-	const editorDisabledFeatures = vipiEditorFeatures.filter((feature) =>
-		(Array.isArray(disabled) && disabled.includes(`pi-me-${feature}`)) ||
-		(Array.isArray(state.editorDisabledFeatures) && state.editorDisabledFeatures.includes(feature)),
-	).sort() as VipiEditorFeature[];
+	const ids = [...(Array.isArray(disabled) ? disabled : []), ...legacyFeatures]
+		.map((id) => id === "pi-yappi-themes" ? "pi-vipi-themes" : id === "pi-me" ? "vipi-editor" : id)
+		.filter((id): id is VipiExtensionId => typeof id === "string" && allowedIds.has(id));
 	return {
 		disabled: [...new Set(ids)].sort((left, right) => left.localeCompare(right)),
-		...(editorDisabledFeatures.length > 0 ? { editorDisabledFeatures } : {}),
+		...(state.editorPluginsMigrated === true ? { editorPluginsMigrated: true as const } : {}),
 	};
 }
 
 export function cloneVipiState(state: VipiState): VipiState {
 	return {
 		disabled: [...state.disabled],
-		...(state.editorDisabledFeatures ? { editorDisabledFeatures: [...state.editorDisabledFeatures] } : {}),
+		...(state.editorPluginsMigrated ? { editorPluginsMigrated: true as const } : {}),
 	};
 }
 
@@ -44,9 +43,9 @@ export function vipiStatesEqual(left: VipiState, right: VipiState): boolean {
 	return JSON.stringify(normalizeVipiState(left)) === JSON.stringify(normalizeVipiState(right));
 }
 
-async function readStateFile(path: string): Promise<VipiState | undefined> {
+async function readStateFile(path: string): Promise<unknown> {
 	try {
-		return normalizeVipiState(JSON.parse(await readFile(path, "utf8")));
+		return JSON.parse(await readFile(path, "utf8"));
 	} catch (error) {
 		if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return undefined;
 		throw new VipiStateReadError(`Failed to read ${path}: ${error instanceof Error ? error.message : String(error)}`, path);
@@ -54,13 +53,25 @@ async function readStateFile(path: string): Promise<VipiState | undefined> {
 }
 
 export async function readVipiState(agentDir: string): Promise<VipiState> {
-	return await readStateFile(getVipiStatePath(agentDir))
-		?? await readStateFile(join(agentDir, "yappi.json"))
-		?? cloneVipiState(defaultVipiState);
+	const current = await readStateFile(getVipiStatePath(agentDir));
+	const state = normalizeVipiState(current === undefined ? await readStateFile(join(agentDir, "yappi.json")) : current);
+	if (state.editorPluginsMigrated) return state;
+	const path = join(agentDir, "vipi-editor.json");
+	const legacy = await readStateFile(path);
+	if (legacy === undefined) return state;
+	if (!legacy || typeof legacy !== "object" || !("disabled" in legacy) || !Array.isArray(legacy.disabled) ||
+		!legacy.disabled.every((value) => vipiEditorFeatures.some((feature) => feature === value))) {
+		throw new VipiStateReadError(`Invalid disabled editor features in ${path}`, path);
+	}
+	const pluginIds = new Set(vipiEditorFeatures.map((feature) => `pi-me-${feature}`));
+	return normalizeVipiState({
+		disabled: [...state.disabled.filter((id) => !pluginIds.has(id)), ...legacy.disabled.map((feature) => `pi-me-${feature}`)],
+		editorPluginsMigrated: true,
+	});
 }
 
 export async function writeVipiState(state: VipiState, agentDir: string): Promise<VipiState> {
-	const normalized = normalizeVipiState(state);
+	const normalized = normalizeVipiState({ ...state, editorPluginsMigrated: true });
 	const path = getVipiStatePath(agentDir);
 	await mkdir(dirname(path), { recursive: true });
 	await writeFile(path, `${JSON.stringify(normalized, null, "\t")}\n`, "utf8");

@@ -26,10 +26,13 @@ test("pi-norn uses the npm adapter and recognizes an existing installation", () 
   assert.equal(getVipiExtensionStatuses(disabled, configured).find(({ extension }) => extension.id === "norn").state, "pending-remove");
 });
 
-test("one catalog entry controls the entire editor package", () => {
+test("editor and plugins have separate catalog entries with an editor dependency", () => {
   const enabled = getDesiredEnabledIds({ disabled: ["vipi-editor"] });
   assert.equal(enabled.has("vipi-editor"), false);
-  assert.ok(!vipiExtensions.some(({ id }) => id.startsWith("pi-me")));
+  for (const id of ["pi-me-jump-mode", "pi-me-command-palette", "pi-me-input-source"]) {
+    assert.ok(vipiExtensions.some(entry => entry.id === id));
+    assert.equal(enabled.has(id), false);
+  }
   assert.equal(enabled.has("pi-web-access"), true);
 });
 
@@ -65,7 +68,7 @@ test("state reads are side-effect free; Vipi wins over legacy state after saving
     assert.deepEqual(await readVipiState(directory), { disabled: ["pi-vipi-themes"] });
     await assert.rejects(readFile(join(directory, "vipi.json")), { code: "ENOENT" });
     await writeVipiState({ disabled: ["vipi-editor"] }, directory);
-    assert.deepEqual(await readVipiState(directory), { disabled: ["vipi-editor"] });
+    assert.deepEqual(await readVipiState(directory), { disabled: ["vipi-editor"], editorPluginsMigrated: true });
     assert.equal(await readFile(join(directory, "yappi.json"), "utf8"), legacy);
     await writeFile(join(directory, "vipi.json"), "{");
     await assert.rejects(readVipiState(directory), /Failed to read.*vipi.json/);

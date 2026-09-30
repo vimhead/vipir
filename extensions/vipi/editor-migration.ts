@@ -4,7 +4,7 @@ import type { VipiOperationError, VipiOperationTarget, VipiProgressCallback } fr
 export const editorPackageSource = "git:github.com/vimhead/vipi-editor";
 
 export function getRetiredEditorPackage(source: string): VipiOperationTarget | undefined {
-	const match = /^(?:git:)?(?:https:\/\/)?github\.com\/vimhead\/(pi-me(?:-core|-fields|-jump-mode|-command-palette|-input-source)?)(?:\.git)?(?:@[^\s]+)?\/?$/.exec(source);
+	const match = /^(?:git:)?(?:https:\/\/)?github\.com\/vimhead\/(pi-me(?:-core|-fields)?)(?:\.git)?(?:@[^\s]+)?\/?$/.exec(source);
 	if (!match) return undefined;
 	return { id: match[1], name: match[1], description: "Replaced by vipi-editor", source };
 }
