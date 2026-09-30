@@ -1,35 +1,35 @@
 import { getAgentDir, type ExtensionCommandContext, type KeybindingsManager, type Theme } from "@earendil-works/pi-coding-agent";
 import { matchesKey, stripTerminalSequences, truncateToWidth, visibleWidth, wrapTextWithAnsi, type TUI } from "@earendil-works/pi-tui";
-import { vipiExtensions } from "./catalog.ts";
+import { vipirExtensions } from "./catalog.ts";
 import {
-	getConfiguredVipiSources,
-	getVipiExtensionStatuses,
+	getConfiguredVipirSources,
+	getVipirExtensionStatuses,
 	syncChanged,
-	syncVipiExtensions,
+	syncVipirExtensions,
 	updateChanged,
-	updateVipiExtensions,
+	updateVipirExtensions,
 } from "./manager.ts";
 import {
-	cloneVipiState,
-	normalizeVipiState,
-	readVipiState,
-	writeVipiState,
-	vipiStatesEqual,
+	cloneVipirState,
+	normalizeVipirState,
+	readVipirState,
+	writeVipirState,
+	vipirStatesEqual,
 } from "./state.ts";
 import {
-	vipiPlatforms,
-	type VipiExtension,
-	type VipiExtensionId,
-	type VipiExtensionStatus,
-	type VipiOperationTarget,
-	type VipiState,
-	type VipiSyncResult,
-	type VipiSystemDependency,
-	type VipiUpdateResult,
+	vipirPlatforms,
+	type VipirExtension,
+	type VipirExtensionId,
+	type VipirExtensionStatus,
+	type VipirOperationTarget,
+	type VipirState,
+	type VipirSyncResult,
+	type VipirSystemDependency,
+	type VipirUpdateResult,
 } from "./types.ts";
 
-type VipiTuiResult = { action: "close" } | { action: "reload" };
-type VipiMode = "normal" | "exit-prompt" | "busy" | "reload-prompt";
+type VipirTuiResult = { action: "close" } | { action: "reload" };
+type VipirMode = "normal" | "exit-prompt" | "busy" | "reload-prompt";
 type LayoutMode = "single-column" | "multi-column";
 type AppKeybindingName = Parameters<KeybindingsManager["getKeys"]>[0];
 type SizeValue = number | `${number}%`;
@@ -87,7 +87,7 @@ interface ScrollWindow<T> {
 	position?: string;
 }
 
-type VipiListRow = { type: "extension"; status: VipiExtensionStatus };
+type VipirListRow = { type: "extension"; status: VipirExtensionStatus };
 
 function safeText(text: string): string {
 	return stripTerminalSequences(text);
@@ -265,7 +265,7 @@ function joinedSeparator(leftInner: number, rightInner: number, theme: Theme): s
 	return border(theme, `├${"─".repeat(leftInner)}┴${"─".repeat(rightInner)}┤`);
 }
 
-function formatErrorSummary(errors: Array<{ extension: VipiOperationTarget; message: string }>): string[] {
+function formatErrorSummary(errors: Array<{ extension: VipirOperationTarget; message: string }>): string[] {
 	if (errors.length === 0) return [];
 	return [
 		"Errors",
@@ -274,13 +274,13 @@ function formatErrorSummary(errors: Array<{ extension: VipiOperationTarget; mess
 	];
 }
 
-function summarizeSync(result: VipiSyncResult): string {
+function summarizeSync(result: VipirSyncResult): string {
 	const parts = [`installed ${result.installed.length}`, `removed ${result.removed.length}`];
 	if (result.errors.length > 0) parts.push(`${result.errors.length} error(s)`);
 	return `Sync complete: ${parts.join(", ")}.`;
 }
 
-function summarizeUpdate(sync: VipiSyncResult, update: VipiUpdateResult): string {
+function summarizeUpdate(sync: VipirSyncResult, update: VipirUpdateResult): string {
 	const parts = [
 		`installed ${sync.installed.length}`,
 		`removed ${sync.removed.length}`,
@@ -291,7 +291,7 @@ function summarizeUpdate(sync: VipiSyncResult, update: VipiUpdateResult): string
 	return `Sync + update complete: ${parts.join(", ")}.`;
 }
 
-function statusLabel(status: VipiExtensionStatus, theme: Theme): string {
+function statusLabel(status: VipirExtensionStatus, theme: Theme): string {
 	switch (status.state) {
 		case "installed":
 			return theme.fg("success", "Enabled");
@@ -304,12 +304,12 @@ function statusLabel(status: VipiExtensionStatus, theme: Theme): string {
 	}
 }
 
-class VipiTuiComponent {
-	private mode: VipiMode = "normal";
+class VipirTuiComponent {
+	private mode: VipirMode = "normal";
 	private selectedIndex = 0;
 	private listOffset = 0;
-	private savedState: VipiState;
-	private draftState: VipiState;
+	private savedState: VipirState;
+	private draftState: VipirState;
 	private configuredSources: Set<string>;
 	private message = "Toggle extensions, then sync or update.";
 	private operationDetails: string[] = [];
@@ -322,12 +322,12 @@ class VipiTuiComponent {
 		private readonly tui: TUI,
 		private readonly theme: Theme,
 		private readonly keybindings: KeybindingsManager,
-		private readonly done: (result: VipiTuiResult) => void,
-		state: VipiState,
+		private readonly done: (result: VipirTuiResult) => void,
+		state: VipirState,
 		configuredSources: Set<string>,
 	) {
-		this.savedState = cloneVipiState(state);
-		this.draftState = cloneVipiState(state);
+		this.savedState = cloneVipirState(state);
+		this.draftState = cloneVipirState(state);
 		this.configuredSources = configuredSources;
 	}
 
@@ -339,7 +339,7 @@ class VipiTuiComponent {
 		if (this.mode === "exit-prompt") lines = this.renderExitPrompt(width);
 		else if (this.mode === "busy") lines = this.renderBusy(width);
 		else if (this.mode === "reload-prompt") lines = this.renderReloadPrompt(width);
-		else if (vipiExtensions.length === 0) lines = this.renderEmpty(width);
+		else if (vipirExtensions.length === 0) lines = this.renderEmpty(width);
 		else if (layoutMode(width) === "multi-column") lines = this.renderMultiColumn(width);
 		else lines = this.renderSingleColumn(width);
 
@@ -409,7 +409,7 @@ class VipiTuiComponent {
 		this.lastListVisibleRows = listBudget;
 
 		const position = window.overflow ? `${this.selectedIndex + 1}/${this.selectableExtensions().length}` : undefined;
-		const title = `${EXTENSIONS_ICON} Vipi Extensions${position ? ` ${position}` : ""}`;
+		const title = `${EXTENSIONS_ICON} Vipir Extensions${position ? ` ${position}` : ""}`;
 		const lines = [topBorder(title, boxWidth, this.theme)];
 		for (const row of window.visibleItems) {
 			lines.push(boxLine(this.renderListRow(row, Math.max(0, boxWidth - 4), boxWidth >= 84), boxWidth, this.theme));
@@ -438,7 +438,7 @@ class VipiTuiComponent {
 		const listLines = window.visibleItems.map((row) => this.renderListRow(row, listWidth, false));
 		const detailLines = this.detailLines({ includeDescription: true, includeHeading: false, width: detailWidth }).map(detail => truncateToWidth(detail, detailWidth, "…"));
 		const position = window.overflow ? `${this.selectedIndex + 1}/${this.selectableExtensions().length}` : undefined;
-		const title = `${EXTENSIONS_ICON} Vipi${position ? ` ${position}` : ""}`;
+		const title = `${EXTENSIONS_ICON} Vipir${position ? ` ${position}` : ""}`;
 		const lines = [joinedTopBorder(title, "Details", boxWidth, leftInner, this.theme)];
 
 		for (let index = 0; index < bodyRows; index++) {
@@ -455,10 +455,10 @@ class VipiTuiComponent {
 	private renderEmpty(width: number): string[] {
 		const boxWidth = Math.min(width, 64);
 		return this.fitDialog([
-			topBorder(`${EXTENSIONS_ICON} Vipi Extensions`, boxWidth, this.theme),
+			topBorder(`${EXTENSIONS_ICON} Vipir Extensions`, boxWidth, this.theme),
 			boxLine("No extensions configured", boxWidth, this.theme),
 			boxLine("", boxWidth, this.theme),
-			boxLine(muted(this.theme, "Add curated entries in extensions/vipi/catalog.ts."), boxWidth, this.theme),
+			boxLine(muted(this.theme, "Add curated entries in extensions/vipir/catalog.ts."), boxWidth, this.theme),
 			separator(boxWidth, this.theme),
 			this.footerLine([cancelHint(this.keybindings, "close")], [], boxWidth),
 			bottomBorder(boxWidth, this.theme),
@@ -515,9 +515,9 @@ class VipiTuiComponent {
 	private fitDialog(lines: string[], boxWidth: number): string[] {
 		const maxRows = overlayRowBudget(this.tui, OVERLAY_OPTIONS);
 		if (lines.length <= maxRows) return lines;
-		if (maxRows <= 2) return [topBorder("Vipi", boxWidth, this.theme), bottomBorder(boxWidth, this.theme)].slice(0, maxRows);
+		if (maxRows <= 2) return [topBorder("Vipir", boxWidth, this.theme), bottomBorder(boxWidth, this.theme)].slice(0, maxRows);
 
-		const top = lines[0] ?? topBorder("Vipi", boxWidth, this.theme);
+		const top = lines[0] ?? topBorder("Vipir", boxWidth, this.theme);
 		const bottom = lines[lines.length - 1] ?? bottomBorder(boxWidth, this.theme);
 		let separatorIndex = -1;
 		for (let index = lines.length - 2; index > 0; index--) {
@@ -547,22 +547,22 @@ class VipiTuiComponent {
 		].join(muted(this.theme, " · "));
 	}
 
-	private groupedListRows(): VipiListRow[] {
+	private groupedListRows(): VipirListRow[] {
 		return this.statuses().map((status) => ({ type: "extension", status }));
 	}
 
-	private selectedListRowIndex(rows: readonly VipiListRow[]): number {
+	private selectedListRowIndex(rows: readonly VipirListRow[]): number {
 		const selected = this.selectedExtension();
 		if (!selected) return 0;
 		const index = rows.findIndex((row) => row.type === "extension" && row.status.extension.id === selected.id);
 		return index === -1 ? 0 : index;
 	}
 
-	private renderListRow(row: VipiListRow, width: number, includeDescription: boolean): string {
+	private renderListRow(row: VipirListRow, width: number, includeDescription: boolean): string {
 		return this.renderExtensionRow(row.status, row.status.extension.id === this.selectedExtension()?.id, width, includeDescription);
 	}
 
-	private renderExtensionRow(status: VipiExtensionStatus, selected: boolean, width: number, includeDescription: boolean): string {
+	private renderExtensionRow(status: VipirExtensionStatus, selected: boolean, width: number, includeDescription: boolean): string {
 		const pointer = selected ? this.theme.fg("accent", "▸") : " ";
 		const state = status.desired ? this.theme.fg("success", "●") : this.theme.fg("muted", "○");
 		const statusWidth = 13;
@@ -576,7 +576,7 @@ class VipiTuiComponent {
 		return line(`${base} ${description}`, width);
 	}
 
-	private rowDetail(status: VipiExtensionStatus): string {
+	private rowDetail(status: VipirExtensionStatus): string {
 		const tags = status.extension.tags?.slice(0, 3).join(", ");
 		return safeText(tags || status.extension.description);
 	}
@@ -635,19 +635,19 @@ class VipiTuiComponent {
 		return muted(this.theme, safe);
 	}
 
-	private statuses(): VipiExtensionStatus[] {
-		return getVipiExtensionStatuses(this.draftState, this.configuredSources);
+	private statuses(): VipirExtensionStatus[] {
+		return getVipirExtensionStatuses(this.draftState, this.configuredSources);
 	}
 
-	private selectableExtensions(): readonly VipiExtension[] {
-		return vipiExtensions;
+	private selectableExtensions(): readonly VipirExtension[] {
+		return vipirExtensions;
 	}
 
-	private selectedExtension(): VipiExtension | undefined {
+	private selectedExtension(): VipirExtension | undefined {
 		return this.selectableExtensions()[this.selectedIndex];
 	}
 
-	private selectedStatus(): VipiExtensionStatus | undefined {
+	private selectedStatus(): VipirExtensionStatus | undefined {
 		const extension = this.selectedExtension();
 		if (!extension) return undefined;
 		return this.statuses().find((candidate) => candidate.extension.id === extension.id);
@@ -681,7 +681,7 @@ class VipiTuiComponent {
 				: addSorted(this.draftState.disabled, id);
 		}
 
-		this.draftState = normalizeVipiState(this.draftState);
+		this.draftState = normalizeVipirState(this.draftState);
 		this.message = this.hasPendingChanges()
 			? ""
 			: "Selection restored.";
@@ -689,7 +689,7 @@ class VipiTuiComponent {
 	}
 
 	private hasPendingChanges(): boolean {
-		return !vipiStatesEqual(this.savedState, this.draftState);
+		return !vipirStatesEqual(this.savedState, this.draftState);
 	}
 
 	private closeOrPrompt(): void {
@@ -741,7 +741,7 @@ class VipiTuiComponent {
 		this.tui.requestRender();
 
 		try {
-			this.configuredSources = await getConfiguredVipiSources(this.ctx);
+			this.configuredSources = await getConfiguredVipirSources(this.ctx);
 			this.message = "Pi package settings refreshed.";
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -756,13 +756,13 @@ class VipiTuiComponent {
 	private async apply(update: boolean, closeAfterNoReload: boolean): Promise<void> {
 		this.mode = "busy";
 		this.reloadPromptCloseAfterNo = closeAfterNoReload;
-		this.message = update ? "Syncing Vipi extensions before update..." : "Syncing Vipi extensions...";
+		this.message = update ? "Syncing Vipir extensions before update..." : "Syncing Vipir extensions...";
 		this.operationDetails = ["Progress", "  - Saving your extension selection"];
 		this.tui.requestRender();
 
 		try {
-			const committedState = normalizeVipiState(this.draftState);
-			const syncResult = await syncVipiExtensions(this.ctx, committedState, (message) => {
+			const committedState = normalizeVipirState(this.draftState);
+			const syncResult = await syncVipirExtensions(this.ctx, committedState, (message) => {
 				this.message = message;
 				this.operationDetails = ["Progress", `  - ${message}`];
 				this.tui.requestRender();
@@ -772,17 +772,17 @@ class VipiTuiComponent {
 				throw new Error(syncResult.errors.map((error) => error.message).join("; "));
 			}
 
-			this.savedState = cloneVipiState(committedState);
-			this.draftState = cloneVipiState(committedState);
-			this.configuredSources = await getConfiguredVipiSources(this.ctx);
+			this.savedState = cloneVipirState(committedState);
+			this.draftState = cloneVipirState(committedState);
+			this.configuredSources = await getConfiguredVipirSources(this.ctx);
 
 			if (update) {
-				const updateResult = await updateVipiExtensions(this.ctx, committedState, (message) => {
+				const updateResult = await updateVipirExtensions(this.ctx, committedState, (message) => {
 					this.message = message;
 					this.operationDetails = ["Progress", `  - ${message}`];
 					this.tui.requestRender();
 				});
-				this.configuredSources = await getConfiguredVipiSources(this.ctx);
+				this.configuredSources = await getConfiguredVipirSources(this.ctx);
 				const hasOperationErrors = syncResult.errors.length > 0 || updateResult.errors.length > 0;
 				const changed = syncChanged(syncResult) || updateChanged(updateResult);
 				this.message = summarizeUpdate(syncResult, updateResult);
@@ -828,7 +828,7 @@ class VipiTuiComponent {
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.message = `Vipi operation failed: ${message}`;
+			this.message = `Vipir operation failed: ${message}`;
 			this.operationDetails = [];
 			this.mode = "normal";
 		}
@@ -836,17 +836,17 @@ class VipiTuiComponent {
 		this.tui.requestRender();
 	}
 
-	private finish(result: VipiTuiResult): void {
+	private finish(result: VipirTuiResult): void {
 		this.closed = true;
 		this.done(result);
 	}
 }
 
-function platformSupportLines(extension: VipiExtension): string[] {
+function platformSupportLines(extension: VipirExtension): string[] {
 	if (!extension.platformSupport) return [];
 	return [
 		"  - Platforms:",
-		...vipiPlatforms.map((platform) => {
+		...vipirPlatforms.map((platform) => {
 			const support = extension.platformSupport?.[platform];
 			if (!support) return `    - ${platform}: supported`;
 			if (!support.supported) return `    - ${platform}: unsupported (${unsupportedReasonLabel(support.reason)})`;
@@ -858,7 +858,7 @@ function platformSupportLines(extension: VipiExtension): string[] {
 	];
 }
 
-function systemDependencyLabel(dependency: VipiSystemDependency): string {
+function systemDependencyLabel(dependency: VipirSystemDependency): string {
 	switch (dependency.type) {
 		case "binary":
 			return dependency.command;
@@ -871,10 +871,10 @@ function unsupportedReasonLabel(reason: string): string {
 	return reason.replaceAll("-", " ");
 }
 
-function dependencyIds(id: VipiExtensionId): VipiExtensionId[] {
-	const byId = new Map(vipiExtensions.map((extension) => [extension.id, extension]));
-	const result = new Set<VipiExtensionId>();
-	const visit = (currentId: VipiExtensionId): void => {
+function dependencyIds(id: VipirExtensionId): VipirExtensionId[] {
+	const byId = new Map(vipirExtensions.map((extension) => [extension.id, extension]));
+	const result = new Set<VipirExtensionId>();
+	const visit = (currentId: VipirExtensionId): void => {
 		for (const dependencyId of byId.get(currentId)?.extensionDependencies ?? []) {
 			if (result.has(dependencyId)) continue;
 			result.add(dependencyId);
@@ -885,13 +885,13 @@ function dependencyIds(id: VipiExtensionId): VipiExtensionId[] {
 	return [...result];
 }
 
-function directDependentIds(id: VipiExtensionId): VipiExtensionId[] {
-	return vipiExtensions.filter((extension) => extension.extensionDependencies?.some((dependencyId) => dependencyId === id)).map((extension) => extension.id);
+function directDependentIds(id: VipirExtensionId): VipirExtensionId[] {
+	return vipirExtensions.filter((extension) => extension.extensionDependencies?.some((dependencyId) => dependencyId === id)).map((extension) => extension.id);
 }
 
-function dependentIds(id: VipiExtensionId): VipiExtensionId[] {
-	const result = new Set<VipiExtensionId>();
-	const visit = (currentId: VipiExtensionId): void => {
+function dependentIds(id: VipirExtensionId): VipirExtensionId[] {
+	const result = new Set<VipirExtensionId>();
+	const visit = (currentId: VipirExtensionId): void => {
 		for (const dependentId of directDependentIds(currentId)) {
 			if (result.has(dependentId)) continue;
 			result.add(dependentId);
@@ -902,28 +902,28 @@ function dependentIds(id: VipiExtensionId): VipiExtensionId[] {
 	return [...result];
 }
 
-function addSorted(values: VipiExtensionId[], id: VipiExtensionId): VipiExtensionId[] {
+function addSorted(values: VipirExtensionId[], id: VipirExtensionId): VipirExtensionId[] {
 	return [...new Set([...values, id])].sort((a, b) => a.localeCompare(b));
 }
 
-function removeId(values: VipiExtensionId[], id: VipiExtensionId): VipiExtensionId[] {
+function removeId(values: VipirExtensionId[], id: VipirExtensionId): VipirExtensionId[] {
 	return values.filter((value) => value !== id);
 }
 
-export async function openVipiTui(ctx: ExtensionCommandContext): Promise<VipiTuiResult> {
-	let state: VipiState;
+export async function openVipirTui(ctx: ExtensionCommandContext): Promise<VipirTuiResult> {
+	let state: VipirState;
 	try {
-		state = await readVipiState(getAgentDir());
+		state = await readVipirState(getAgentDir());
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		const reset = await ctx.ui.confirm("Reset Vipi state?", `${message}\n\nReset to the default Vipi state?`);
+		const reset = await ctx.ui.confirm("Reset Vipir state?", `${message}\n\nReset to the default Vipir state?`);
 		if (!reset) return { action: "close" };
-		state = await writeVipiState({ disabled: [] }, getAgentDir());
+		state = await writeVipirState({ disabled: [] }, getAgentDir());
 	}
 
-	const configured = await getConfiguredVipiSources(ctx);
-	const result = await ctx.ui.custom<VipiTuiResult>((tui, theme, keybindings, done) => {
-		const component = new VipiTuiComponent(ctx, tui, theme, keybindings, done, state, configured);
+	const configured = await getConfiguredVipirSources(ctx);
+	const result = await ctx.ui.custom<VipirTuiResult>((tui, theme, keybindings, done) => {
+		const component = new VipirTuiComponent(ctx, tui, theme, keybindings, done, state, configured);
 		return component;
 	}, {
 		overlay: true,

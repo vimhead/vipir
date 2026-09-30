@@ -1,24 +1,24 @@
 {
-  "name": "vipi",
-  "repository": { "type": "git", "url": "git+https://github.com/vimhead/vipi.git" },
-  "homepage": "https://github.com/vimhead/vipi#readme",
-  "bugs": { "url": "https://github.com/vimhead/vipi/issues" },
+  "name": "vipir",
+  "repository": { "type": "git", "url": "git+https://github.com/vimhead/vipir.git" },
+  "homepage": "https://github.com/vimhead/vipir#readme",
+  "bugs": { "url": "https://github.com/vimhead/vipir/issues" },
   "version": "0.1.0",
-  "description": "Vi-like Pi: modal editing and a configurable collection of Pi extensions.",
+  "description": "Vim-first Pi redistribution: coordinated editing and individually configurable extensions.",
   "type": "module",
   "license": "MIT",
   "keywords": [
     "pi-package",
     "pi-extension",
     "coding-agent",
-    "vipi"
+    "vipir"
   ],
   "files": [
     "extensions"
   ],
   "pi": {
     "extensions": [
-      "./extensions/vipi/index.ts"
+      "./extensions/vipir/index.ts"
     ]
   },
   "peerDependencies": {

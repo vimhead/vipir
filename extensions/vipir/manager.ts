@@ -6,24 +6,26 @@ import {
 	type ExtensionContext,
 	type PackageManager,
 } from "@earendil-works/pi-coding-agent";
-import { vipiExtensions } from "./catalog.ts";
+import { vipirExtensions } from "./catalog.ts";
 import { editorPackageSource, removeRetiredEditorSources } from "./editor-migration.ts";
-import { writeVipiState } from "./state.ts";
+import { writeVipirState } from "./state.ts";
+import { migrateRenamedPackages } from "./package-migration.ts";
+import { parseManagedSource } from "./package-names.ts";
 import type {
-	VipiExtension,
-	VipiExtensionId,
-	VipiExtensionStatus,
-	VipiOperationTarget,
-	VipiProgressCallback,
-	VipiState,
-	VipiSyncResult,
-	VipiUpdateResult,
+	VipirExtension,
+	VipirExtensionId,
+	VipirExtensionStatus,
+	VipirOperationTarget,
+	VipirProgressCallback,
+	VipirState,
+	VipirSyncResult,
+	VipirUpdateResult,
 } from "./types.ts";
 
-const VIPI_STATE_EXTENSION: VipiOperationTarget = {
-	id: "vipi-state",
-	name: "Vipi state",
-	description: "Vipi state file",
+const VIPIR_STATE_EXTENSION: VipirOperationTarget = {
+	id: "vipir-state",
+	name: "Vipir state",
+	description: "Vipir state file",
 	source: getAgentDir(),
 };
 
@@ -73,17 +75,19 @@ function configuredSources(packageManager: PackageManager): Set<string> {
 	const sources = new Set<string>();
 	for (const configured of packageManager.listConfiguredPackages()) {
 		sources.add(configured.source);
+		const parsed = parseManagedSource(configured.source);
+		if (parsed && !parsed.isRenamed) sources.add(parsed.canonicalSource);
 		if (configured.installedPath) sources.add(configured.installedPath);
 	}
 	return sources;
 }
 
-export function getDesiredEnabledIds(state: VipiState): Set<VipiExtensionId> {
-	const enabledIds = new Set(vipiExtensions.filter((extension) => !state.disabled.includes(extension.id)).map((extension) => extension.id));
+export function getDesiredEnabledIds(state: VipirState): Set<VipirExtensionId> {
+	const enabledIds = new Set(vipirExtensions.filter((extension) => !state.disabled.includes(extension.id)).map((extension) => extension.id));
 	let changed: boolean;
 	do {
 		changed = false;
-		for (const extension of vipiExtensions) {
+		for (const extension of vipirExtensions) {
 			if (enabledIds.has(extension.id) && extension.extensionDependencies?.some((id) => !enabledIds.has(id))) {
 				enabledIds.delete(extension.id);
 				changed = true;
@@ -93,23 +97,23 @@ export function getDesiredEnabledIds(state: VipiState): Set<VipiExtensionId> {
 	return enabledIds;
 }
 
-export function getDesiredExtensions(state: VipiState): VipiExtension[] {
+export function getDesiredExtensions(state: VipirState): VipirExtension[] {
 	const enabledIds = getDesiredEnabledIds(state);
-	return vipiExtensions.filter((extension) => enabledIds.has(extension.id));
+	return vipirExtensions.filter((extension) => enabledIds.has(extension.id));
 }
 
-export async function getConfiguredVipiSources(ctx: ExtensionContext): Promise<Set<string>> {
+export async function getConfiguredVipirSources(ctx: ExtensionContext): Promise<Set<string>> {
 	const { packageManager } = createPackageManager(ctx);
 	return configuredSources(packageManager);
 }
 
-export function getVipiExtensionStatuses(state: VipiState, configured: Set<string>): VipiExtensionStatus[] {
+export function getVipirExtensionStatuses(state: VipirState, configured: Set<string>): VipirExtensionStatus[] {
 	const enabledIds = getDesiredEnabledIds(state);
 
-	return vipiExtensions.map((extension) => {
+	return vipirExtensions.map((extension) => {
 		const desired = enabledIds.has(extension.id);
 		const isConfigured = configured.has(extension.source);
-		let rowState: VipiExtensionStatus["state"];
+		let rowState: VipirExtensionStatus["state"];
 
 		if (desired && isConfigured) rowState = "installed";
 		else if (desired && !isConfigured) rowState = "pending-install";
@@ -125,12 +129,12 @@ export function getVipiExtensionStatuses(state: VipiState, configured: Set<strin
 	});
 }
 
-export async function syncVipiExtensions(
+export async function syncVipirExtensions(
 	ctx: ExtensionContext,
-	state: VipiState,
-	onProgress?: VipiProgressCallback,
-): Promise<VipiSyncResult> {
-	const result: VipiSyncResult = {
+	state: VipirState,
+	onProgress?: VipirProgressCallback,
+): Promise<VipirSyncResult> {
+	const result: VipirSyncResult = {
 		installed: [],
 		removed: [],
 		skipped: [],
@@ -138,11 +142,11 @@ export async function syncVipiExtensions(
 	};
 
 	try {
-		onProgress?.("Saving Vipi extension state...");
-		await writeVipiState(state, getAgentDir());
+		onProgress?.("Saving Vipir extension state...");
+		await writeVipirState(state, getAgentDir());
 	} catch (error) {
 		result.errors.push({
-			extension: VIPI_STATE_EXTENSION,
+			extension: VIPIR_STATE_EXTENSION,
 			action: "save",
 			message: getMessage(error),
 		});
@@ -150,11 +154,22 @@ export async function syncVipiExtensions(
 	}
 
 	const { packageManager, settingsManager } = createPackageManager(ctx);
-	let configured = configuredSources(packageManager);
 	const desiredIds = getDesiredEnabledIds(state);
+	const renamed = await migrateRenamedPackages({
+		packageManager, settingsManager, onProgress,
+		includeProject: ctx.isProjectTrusted(),
+		isEnabled: (id) => id === "vipir" || desiredIds.has(id as VipirExtensionId),
+	});
+	result.removed.push(...renamed.removed);
+	result.errors.push(...renamed.errors);
+	if (renamed.errors.length) {
+		await settingsManager.flush();
+		return result;
+	}
+	const configured = configuredSources(packageManager);
 
 	const skipped = new Set<string>();
-	for (const extension of vipiExtensions) {
+	for (const extension of vipirExtensions) {
 		const desired = desiredIds.has(extension.id);
 		const isConfigured = configured.has(extension.source);
 		if (!desired || isConfigured) {
@@ -176,7 +191,7 @@ export async function syncVipiExtensions(
 		}
 	}
 
-	for (const extension of [...vipiExtensions].reverse()) {
+	for (const extension of [...vipirExtensions].reverse()) {
 		const desired = desiredIds.has(extension.id);
 		const isConfigured = configured.has(extension.source);
 		if (desired || !isConfigured) continue;
@@ -198,24 +213,24 @@ export async function syncVipiExtensions(
 
 	const migration = removeRetiredEditorSources({
 		packageManager,
-		canReplaceEditor: !desiredIds.has("vipi-editor") || configured.has(editorPackageSource),
+		canReplaceEditor: !desiredIds.has("vipir-editor") || configured.has(editorPackageSource),
 		onProgress,
 	});
 	result.removed.push(...migration.removed);
 	result.errors.push(...migration.errors);
-	result.skipped.push(...vipiExtensions.filter((extension) => skipped.has(extension.id)));
+	result.skipped.push(...vipirExtensions.filter((extension) => skipped.has(extension.id)));
 
 	onProgress?.("Saving Pi settings...");
 	await settingsManager.flush();
 	return result;
 }
 
-export async function updateVipiExtensions(
+export async function updateVipirExtensions(
 	ctx: ExtensionContext,
-	state: VipiState,
-	onProgress?: VipiProgressCallback,
-): Promise<VipiUpdateResult> {
-	const result: VipiUpdateResult = {
+	state: VipirState,
+	onProgress?: VipirProgressCallback,
+): Promise<VipirUpdateResult> {
+	const result: VipirUpdateResult = {
 		updated: [],
 		skipped: [],
 		errors: [],
@@ -247,10 +262,10 @@ export async function updateVipiExtensions(
 	return result;
 }
 
-export function syncChanged(result: VipiSyncResult): boolean {
+export function syncChanged(result: VipirSyncResult): boolean {
 	return result.installed.length > 0 || result.removed.length > 0;
 }
 
-export function updateChanged(result: VipiUpdateResult): boolean {
+export function updateChanged(result: VipirUpdateResult): boolean {
 	return result.updated.length > 0;
 }
