@@ -7,9 +7,7 @@ import {
 	type PackageManager,
 } from "@earendil-works/pi-coding-agent";
 import { vipirExtensions } from "./catalog.ts";
-import { editorPackageSource, removeRetiredEditorSources } from "./editor-migration.ts";
 import { writeVipirState } from "./state.ts";
-import { migrateRenamedPackages } from "./package-migration.ts";
 import { parseManagedSource } from "./package-names.ts";
 import type {
 	VipirExtension,
@@ -76,7 +74,7 @@ function configuredSources(packageManager: PackageManager): Set<string> {
 	for (const configured of packageManager.listConfiguredPackages()) {
 		sources.add(configured.source);
 		const parsed = parseManagedSource(configured.source);
-		if (parsed && !parsed.isRenamed) sources.add(parsed.canonicalSource);
+		if (parsed) sources.add(parsed.canonicalSource);
 		if (configured.installedPath) sources.add(configured.installedPath);
 	}
 	return sources;
@@ -155,17 +153,6 @@ export async function syncVipirExtensions(
 
 	const { packageManager, settingsManager } = createPackageManager(ctx);
 	const desiredIds = getDesiredEnabledIds(state);
-	const renamed = await migrateRenamedPackages({
-		packageManager, settingsManager, onProgress,
-		includeProject: ctx.isProjectTrusted(),
-		isEnabled: (id) => id === "vipir" || desiredIds.has(id as VipirExtensionId),
-	});
-	result.removed.push(...renamed.removed);
-	result.errors.push(...renamed.errors);
-	if (renamed.errors.length) {
-		await settingsManager.flush();
-		return result;
-	}
 	const configured = configuredSources(packageManager);
 
 	const skipped = new Set<string>();
@@ -211,13 +198,6 @@ export async function syncVipirExtensions(
 		}
 	}
 
-	const migration = removeRetiredEditorSources({
-		packageManager,
-		canReplaceEditor: !desiredIds.has("vipir-editor") || configured.has(editorPackageSource),
-		onProgress,
-	});
-	result.removed.push(...migration.removed);
-	result.errors.push(...migration.errors);
 	result.skipped.push(...vipirExtensions.filter((extension) => skipped.has(extension.id)));
 
 	onProgress?.("Saving Pi settings...");

@@ -38,11 +38,8 @@ export interface VipirExtension {
 	platformSupport?: Partial<Record<VipirPlatform, VipirPlatformSupport>>;
 }
 
-export const vipirEditorFeatures = ["jump-mode", "command-palette", "input-source"] as const;
-
 export interface VipirState {
 	disabled: VipirExtensionId[];
-	editorPluginsMigrated?: true;
 }
 
 export interface VipirExtensionStatus {

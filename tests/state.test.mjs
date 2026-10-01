@@ -40,10 +40,10 @@ test("each entry can be disabled independently", () => {
   for (const { id } of vipirExtensions) assert.equal(getDesiredEnabledIds({ disabled: [id] }).has(id), false);
 });
 
-test("normalization removes duplicates and unknown IDs and migrates the theme ID", () => {
+test("normalization accepts only current IDs and removes duplicates", () => {
   assert.deepEqual(normalizeVipirState({ disabled: ["vipir-editor", 2, "unknown", "vipir-editor", "pi-yappi-themes"] }),
-    { disabled: ["vipir-editor", "vipir-themes"] });
-  assert.deepEqual(normalizeVipirState({ disabledPrimary: ["vipir-web-access"], enabledExtra: [] }), { disabled: ["vipir-web-access"] });
+    { disabled: ["vipir-editor"] });
+  assert.deepEqual(normalizeVipirState({ disabledPrimary: ["vipir-web-access"], enabledExtra: [] }), { disabled: [] });
 });
 
 test("clones are independent and equality ignores order", () => {
@@ -59,16 +59,18 @@ test("statuses reflect install and removal intent", () => {
   assert.equal(statuses.find(({ extension }) => extension.id === "vipir-web-access").state, "pending-install");
 });
 
-test("state reads are side-effect free; Vipir wins over legacy state after saving", async () => {
+test("state reads only vipir.json, remain side-effect free and report malformed current state", async () => {
   const directory = await mkdtemp(join(tmpdir(), "vipir-state-"));
   try {
     assert.deepEqual(await readVipirState(directory), { disabled: [] });
     const legacy = JSON.stringify({ disabledPrimary: ["pi-yappi-themes"], enabledExtra: [] });
     await writeFile(join(directory, "yappi.json"), legacy);
-    assert.deepEqual(await readVipirState(directory), { disabled: ["vipir-themes"] });
+    await writeFile(join(directory, "vipi.json"), legacy);
+    await writeFile(join(directory, "vipi-editor.json"), "{");
+    assert.deepEqual(await readVipirState(directory), { disabled: [] });
     await assert.rejects(readFile(join(directory, "vipir.json")), { code: "ENOENT" });
     await writeVipirState({ disabled: ["vipir-editor"] }, directory);
-    assert.deepEqual(await readVipirState(directory), { disabled: ["vipir-editor"], editorPluginsMigrated: true });
+    assert.deepEqual(await readVipirState(directory), { disabled: ["vipir-editor"] });
     assert.equal(await readFile(join(directory, "yappi.json"), "utf8"), legacy);
     await writeFile(join(directory, "vipir.json"), "{");
     await assert.rejects(readVipirState(directory), /Failed to read.*vipir.json/);

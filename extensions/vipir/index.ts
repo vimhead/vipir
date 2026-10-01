@@ -21,7 +21,6 @@ export default function vipir(pi: ExtensionAPI) {
 		},
 	};
 	pi.registerCommand("vipir", command);
-	pi.registerCommand("vipi", { ...command, description: "Alias for /vipir" });
 
 	pi.on("session_start", async (_event, ctx) => {
 		try {
