@@ -29,7 +29,7 @@ test("pi-norn uses the npm adapter and recognizes an existing installation", () 
 test("editor and plugins have separate catalog entries with an editor dependency", () => {
   const enabled = getDesiredEnabledIds({ disabled: ["vipir-editor"] });
   assert.equal(enabled.has("vipir-editor"), false);
-  for (const id of ["vipir-jump", "vipir-palette", "vipir-input-source"]) {
+  for (const id of ["vipir-jump-mode", "vipir-command-palette", "vipir-input-source"]) {
     assert.ok(vipirExtensions.some(entry => entry.id === id));
     assert.equal(enabled.has(id), false);
   }

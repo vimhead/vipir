@@ -19,7 +19,7 @@ function fixture(globalPackages, projectPackages = []) {
   };
 }
 
-test("all eight renamed sources retain Git refs; unrelated owners and Norn are untouched", () => {
+test("renamed sources retain Git refs; unrelated owners and Norn are untouched", () => {
   for (const [oldName, newName] of Object.entries(renamedPackages)) {
     assert.equal(renamePackageSetting(`git:https://github.com/vimhead/${oldName}.git@branch/name`), source(newName) + "@branch/name");
     assert.equal(parseManagedSource(source(newName) + "@main").canonicalSource, source(newName));
@@ -31,7 +31,7 @@ test("all eight renamed sources retain Git refs; unrelated owners and Norn are u
 
 test("filtered package declarations keep their resource choices and update extension paths", () => {
   const original = { source: source("pi-me-command-palette"), extensions: ["extensions/pi-me-command-palette/index.ts", "-extensions/pi-me-command-palette/private.ts"], skills: [], themes: ["-dark*"] };
-  assert.deepEqual(renamePackageSetting(original), { ...original, source: source("vipir-palette"), extensions: ["extensions/vipir-palette/index.ts", "-extensions/vipir-palette/private.ts"] });
+  assert.deepEqual(renamePackageSetting(original), { ...original, source: source("vipir-command-palette"), extensions: ["extensions/vipir-command-palette/index.ts", "-extensions/vipir-command-palette/private.ts"] });
   assert.equal(original.source, source("pi-me-command-palette"));
 });
 
@@ -42,8 +42,8 @@ test("migration preserves scope and unrelated settings, and does not fetch disab
   assert.deepEqual(result.errors, []);
   assert.equal(result.removed.length, 3);
   assert.deepEqual(options.global.packages, [source("vipir"), source("vipir-web-access")]);
-  assert.deepEqual(options.project.packages, [source("vipir-jump")]);
-  assert.deepEqual(options.installs, [[source("vipir"), { local: false }], [source("vipir-jump"), { local: true }]]);
+  assert.deepEqual(options.project.packages, [source("vipir-jump-mode")]);
+  assert.deepEqual(options.installs, [[source("vipir"), { local: false }], [source("vipir-jump-mode"), { local: true }]]);
   assert.equal(options.global.theme, "catppuccin-mocha");
   assert.equal(options.project.defaultModel, "unchanged");
   await migrateRenamedPackages(options);

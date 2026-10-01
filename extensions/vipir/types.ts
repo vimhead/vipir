@@ -7,8 +7,8 @@ export const vipirExtensionIds = [
 	"vipir-themes",
 	"norn",
 	"vipir-editor",
-	"vipir-jump",
-	"vipir-palette",
+	"vipir-jump-mode",
+	"vipir-command-palette",
 	"vipir-input-source",
 ] as const;
 export type VipirExtensionId = typeof vipirExtensionIds[number];

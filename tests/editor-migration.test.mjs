@@ -7,8 +7,8 @@ import { getRetiredEditorPackage, removeRetiredEditorSources } from "../extensio
 import { normalizeVipirState, cloneVipirState, vipirStatesEqual, readVipirState, writeVipirState } from "../extensions/vipir/state.ts";
 
 test("legacy editor and individual feature choices survive normalization and cloning", () => {
-  const state = normalizeVipirState({ disabled: ["pi-me", "vipir-palette", "vipir-input-source"], editorDisabledFeatures: ["jump-mode", "unknown"] });
-  assert.deepEqual(state, { disabled: ["vipir-editor", "vipir-input-source", "vipir-jump", "vipir-palette"] });
+  const state = normalizeVipirState({ disabled: ["pi-me", "vipir-command-palette", "vipir-input-source"], editorDisabledFeatures: ["jump-mode", "unknown"] });
+  assert.deepEqual(state, { disabled: ["vipir-command-palette", "vipir-editor", "vipir-input-source", "vipir-jump-mode"] });
   const clone = cloneVipirState(state);
   clone.disabled.pop();
   assert.equal(state.disabled.length, 4);
@@ -20,7 +20,7 @@ test("retired package identity is limited to the three merged repositories", () 
   for (const name of ["pi-me", "pi-me-core", "pi-me-fields"]) {
     for (const source of [`git:github.com/vimhead/${name}`, `https://github.com/vimhead/${name}.git`, `git:github.com/vimhead/${name}@main`]) assert.equal(getRetiredEditorPackage(source)?.id, name);
   }
-  for (const source of ["git:github.com/vimhead/vipir-jump", "git:github.com/vimhead/vipir-palette", "git:github.com/vimhead/vipir-input-source", "git:github.com/another/pi-me", "git:github.com/vimhead/pi-me-other", "git:github.com/vimhead/vipir-editor", "/work/pi-me", "npm:@vimhead.dev/pi-norn@tip"]) assert.equal(getRetiredEditorPackage(source), undefined);
+  for (const source of ["git:github.com/vimhead/vipir-jump-mode", "git:github.com/vimhead/vipir-command-palette", "git:github.com/vimhead/vipir-input-source", "git:github.com/another/pi-me", "git:github.com/vimhead/pi-me-other", "git:github.com/vimhead/vipir-editor", "/work/pi-me", "npm:@vimhead.dev/pi-norn@tip"]) assert.equal(getRetiredEditorPackage(source), undefined);
 });
 
 test("replacement removes declarations in their own scopes, not repository files", () => {
@@ -29,7 +29,7 @@ test("replacement removes declarations in their own scopes, not repository files
     listConfiguredPackages: () => [
       { source: "git:github.com/vimhead/pi-me", scope: "user" },
       { source: "git:github.com/vimhead/pi-me-fields@main", scope: "project" },
-      { source: "git:github.com/vimhead/vipir-palette", scope: "user" },
+      { source: "git:github.com/vimhead/vipir-command-palette", scope: "user" },
       { source: "git:github.com/vimhead/vipir-editor", scope: "user" },
     ],
     removeSourceFromSettings: (source, options) => { removed.push({ source, ...options }); return true; },

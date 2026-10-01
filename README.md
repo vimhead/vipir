@@ -18,7 +18,7 @@ Start Pi, open **`/vipir`**, and press **S** to install the collection. Every pa
 - Toggle the editor and its three plugins separately. Disabling the editor disables its plugins; enabling a plugin enables the editor.
 - Package changes reload Pi. Preferences are saved in `~/.pi/agent/vipir.json`.
 
-Includes [vipir-editor](https://github.com/vimhead/vipir-editor) for coordinated Vim editing, plus separate [jump mode](https://github.com/vimhead/vipir-jump), [command palette](https://github.com/vimhead/vipir-palette), and [input-source](https://github.com/vimhead/vipir-input-source) plugins, [background jobs](https://github.com/vimhead/vipir-background-jobs), [web access](https://github.com/vimhead/vipir-web-access), [themes](https://github.com/vimhead/vipir-themes), and [pi-norn](https://www.npmjs.com/package/@vimhead.dev/pi-norn).
+Includes [vipir-editor](https://github.com/vimhead/vipir-editor) for coordinated Vim editing, plus separate [jump mode](https://github.com/vimhead/vipir-jump-mode), [command palette](https://github.com/vimhead/vipir-command-palette), and [input-source](https://github.com/vimhead/vipir-input-source) plugins, [background jobs](https://github.com/vimhead/vipir-background-jobs), [web access](https://github.com/vimhead/vipir-web-access), [themes](https://github.com/vimhead/vipir-themes), and [pi-norn](https://www.npmjs.com/package/@vimhead.dev/pi-norn).
 
 Use current Pi and Node.js 24+. Input-source switching needs macOS and `macism`; Norn needs its CLI installed separately.
 

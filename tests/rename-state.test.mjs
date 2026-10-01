@@ -7,7 +7,7 @@ import { normalizeVipirState, readVipirState, writeVipirState } from "../extensi
 
 test("all Vipi disabled IDs migrate to Vipir without enabling plugins or Norn", () => {
   const state = normalizeVipirState({ disabled: ["pi-background-jobs", "pi-web-access", "pi-vipi-themes", "vipi-editor", "pi-me-jump-mode", "pi-me-command-palette", "pi-me-input-source", "norn", "__proto__"], editorPluginsMigrated: true });
-  assert.deepEqual(state, { disabled: ["vipir-background-jobs", "vipir-web-access", "vipir-themes", "vipir-editor", "vipir-jump", "vipir-palette", "vipir-input-source", "norn"].sort(), editorPluginsMigrated: true });
+  assert.deepEqual(state, { disabled: ["vipir-background-jobs", "vipir-web-access", "vipir-themes", "vipir-editor", "vipir-jump-mode", "vipir-command-palette", "vipir-input-source", "norn"].sort(), editorPluginsMigrated: true });
 });
 
 test("Vipir reads Vipi before Yappi, preserves legacy files, and does not hide corrupt state", async context => {
@@ -16,10 +16,10 @@ test("Vipir reads Vipi before Yappi, preserves legacy files, and does not hide c
   await writeFile(join(directory, "yappi.json"), '{"disabled":["norn"]}');
   const legacy = '{"disabled":["pi-me-jump-mode"],"editorPluginsMigrated":true}';
   await writeFile(join(directory, "vipi.json"), legacy);
-  assert.deepEqual(await readVipirState(directory), { disabled: ["vipir-jump"], editorPluginsMigrated: true });
+  assert.deepEqual(await readVipirState(directory), { disabled: ["vipir-jump-mode"], editorPluginsMigrated: true });
   await assert.rejects(readFile(join(directory, "vipir.json")), { code: "ENOENT" });
-  await writeVipirState({ disabled: ["vipir-palette"] }, directory);
-  assert.deepEqual(await readVipirState(directory), { disabled: ["vipir-palette"], editorPluginsMigrated: true });
+  await writeVipirState({ disabled: ["vipir-command-palette"] }, directory);
+  assert.deepEqual(await readVipirState(directory), { disabled: ["vipir-command-palette"], editorPluginsMigrated: true });
   assert.equal(await readFile(join(directory, "vipi.json"), "utf8"), legacy);
   await rm(join(directory, "vipir.json"));
   await writeFile(join(directory, "vipi.json"), "{");

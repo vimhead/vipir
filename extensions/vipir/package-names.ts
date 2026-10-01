@@ -2,16 +2,18 @@ export const renamedPackages: Readonly<Record<string, string>> = {
 	vipi: "vipir",
 	"vipi-editor": "vipir-editor",
 	"pi-vipi-themes": "vipir-themes",
-	"pi-me-jump-mode": "vipir-jump",
-	"pi-me-command-palette": "vipir-palette",
+	"pi-me-jump-mode": "vipir-jump-mode",
+	"pi-me-command-palette": "vipir-command-palette",
+	"vipir-jump": "vipir-jump-mode",
+	"vipir-palette": "vipir-command-palette",
 	"pi-me-input-source": "vipir-input-source",
 	"pi-background-jobs": "vipir-background-jobs",
 	"pi-web-access": "vipir-web-access",
 };
 
 export const editorPluginIds: Readonly<Record<string, string>> = {
-	"jump-mode": "vipir-jump",
-	"command-palette": "vipir-palette",
+	"jump-mode": "vipir-jump-mode",
+	"command-palette": "vipir-command-palette",
 	"input-source": "vipir-input-source",
 };
 
